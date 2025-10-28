@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bouncing Balls Physics Sim</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #111; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const gravity = 0.5; // acceleration
+const friction = 0.9; // bounce energy loss
+
+class Ball {
+  constructor(x, y, radius, color) {
+    this.x = x;
+    this.y = y;
+    this.radius = radius;
+    this.color = color;
+    this.vx = Math.random() * 4 - 2; // horizontal speed
+    this.vy = Math.random() * 4 - 2; // vertical speed
+  }
+
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+    ctx.closePath();
+  }
+
+  update() {
+    // gravity
+    if (this.y + this.radius + this.vy > canvas.height) {
+      this.vy = -this.vy * friction; // bounce
+    } else {
+      this.vy += gravity;
+    }
+
+    // horizontal walls
+    if (this.x + this.radius + this.vx > canvas.width || this.x - this.radius + this.vx < 0) {
+      this.vx = -this.vx;
+    }
+
+    this.x += this.vx;
+    this.y += this.vy;
+    this.draw();
+  }
+}
+
+// create multiple balls
+const balls = [];
+for (let i = 0; i < 30; i++) {
+  const radius = Math.random() * 20 + 10;
+  const x = Math.random() * (canvas.width - radius * 2) + radius;
+  const y = Math.random() * (canvas.height - radius * 2) + radius;
+  const color = `hsl(${Math.random() * 360}, 70%, 50%)`;
+  balls.push(new Ball(x, y, radius, color));
+}
+
+function animate() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  balls.forEach(ball => ball.update());
+  requestAnimationFrame(animate);
+}
+
+animate();
+
+// resize canvas dynamically
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+</script>
+</body>
+</html>
