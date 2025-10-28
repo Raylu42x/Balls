@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Interactive Bouncing Balls</title>
+<title>Interactive Bouncing Balls with Ripple</title>
 <style>
   body { margin: 0; overflow: hidden; background: #111; }
   canvas { display: block; }
@@ -19,7 +19,9 @@ canvas.height = window.innerHeight;
 
 const gravity = 0.5;
 const friction = 0.9;
+
 let repulsePoints = [];
+let ripples = [];
 
 class Ball {
   constructor(x, y, radius, color) {
@@ -33,86 +35,111 @@ class Ball {
 
   draw() {
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
     ctx.fillStyle = this.color;
     ctx.fill();
-    ctx.closePath();
   }
 
   update() {
     // apply gravity
     this.vy += gravity;
 
-    // apply repulsion forces
-    repulsePoints.forEach(point => {
-      const dx = this.x - point.x;
-      const dy = this.y - point.y;
+    // apply repulsion
+    repulsePoints.forEach(p => {
+      const dx = this.x - p.x;
+      const dy = this.y - p.y;
       const dist = Math.sqrt(dx*dx + dy*dy);
-      if (dist < point.radius) {
-        const force = (point.radius - dist) / point.radius * 5; // adjustable strength
+      if (dist < p.radius) {
+        const force = (p.radius - dist) / p.radius * 8; // push strength
         this.vx += (dx / dist) * force;
         this.vy += (dy / dist) * force;
       }
     });
 
-    // bounce off floor
-    if (this.y + this.radius + this.vy > canvas.height) {
+    // bounce off floor/ceiling
+    if (this.y + this.radius > canvas.height) {
       this.vy = -this.vy * friction;
       this.y = canvas.height - this.radius;
     }
-
-    // bounce off ceiling
-    if (this.y - this.radius + this.vy < 0) {
+    if (this.y - this.radius < 0) {
       this.vy = -this.vy * friction;
       this.y = this.radius;
     }
 
     // bounce off walls
-    if (this.x + this.radius + this.vx > canvas.width || this.x - this.radius + this.vx < 0) {
+    if (this.x + this.radius > canvas.width || this.x - this.radius < 0) {
       this.vx = -this.vx * friction;
+      if (this.x + this.radius > canvas.width) this.x = canvas.width - this.radius;
+      if (this.x - this.radius < 0) this.x = this.radius;
     }
 
     this.x += this.vx;
     this.y += this.vy;
+
     this.draw();
   }
 }
 
+// ripple effect
+class Ripple {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.radius = 0;
+    this.alpha = 0.8;
+  }
+
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+    ctx.strokeStyle = `rgba(255,255,255,${this.alpha})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    this.radius += 2;
+    this.alpha -= 0.03;
+  }
+}
+
 const balls = [];
-for (let i = 0; i < 30; i++) {
-  const radius = Math.random() * 20 + 10;
-  const x = Math.random() * (canvas.width - radius * 2) + radius;
-  const y = Math.random() * (canvas.height - radius * 2) + radius;
-  const color = `hsl(${Math.random() * 360}, 70%, 50%)`;
-  balls.push(new Ball(x, y, radius, color));
+for (let i=0; i<30; i++){
+  const radius = Math.random()*20 + 10;
+  const x = Math.random()*(canvas.width-radius*2) + radius;
+  const y = Math.random()*(canvas.height-radius*2) + radius;
+  const color = `hsl(${Math.random()*360},70%,50%)`;
+  balls.push(new Ball(x,y,radius,color));
 }
 
 function animate() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // update balls
   balls.forEach(ball => ball.update());
+
+  // draw ripples
+  ripples.forEach((r, i) => {
+    r.draw();
+    if (r.alpha <= 0) ripples.splice(i,1);
+  });
+
   requestAnimationFrame(animate);
 }
-
 animate();
 
-// repulsion on click/touch
-function addRepulse(x, y) {
-  repulsePoints.push({x, y, radius: 150}); // radius = area of effect
-  setTimeout(() => {
-    repulsePoints.shift(); // remove after short time
-  }, 200); // lasts 0.2s
+function addRepulse(x, y){
+  repulsePoints.push({x, y, radius:150});
+  ripples.push(new Ripple(x, y));
+  setTimeout(()=>{ repulsePoints.shift() }, 200); // repulse lasts 0.2s
 }
 
+// mouse and touch events
 canvas.addEventListener('mousedown', e => addRepulse(e.clientX, e.clientY));
 canvas.addEventListener('touchstart', e => {
   e.preventDefault();
-  for (let touch of e.touches) {
-    addRepulse(touch.clientX, touch.clientY);
-  }
-}, {passive: false});
+  for (let t of e.touches) addRepulse(t.clientX, t.clientY);
+}, {passive:false});
 
 // resize canvas
-window.addEventListener('resize', () => {
+window.addEventListener('resize', ()=>{
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 });
